@@ -27,10 +27,11 @@ class Api(object):
 
     def api_request(
         self, endpoint, method='GET', fields='',
-        params={}, headers=None, client=None
+        params=None, headers=None, client=None
     ):
         url = self.base_url + endpoint
         client = client if client else self.client
+        params = params if params else {}
 
         if headers:
             self.headers.update(headers)
@@ -42,14 +43,14 @@ class Api(object):
                 uri=url,
                 method='POST',
                 body=self._handler_POST_body[self._format](params),
-                headers=headers
+                headers=self.headers
             )
 
         else:
             resp, content = client.request(
                 uri='%s?%s' % (url, urllib.urlencode(params)),
                 method='GET',
-                headers=headers
+                headers=self.headers
             )
 
         # It's Better to Beg for Forgiveness than to Ask for Permission
@@ -75,7 +76,6 @@ class Api(object):
     def get(
         self, endpoint, fields='', params=None, headers=None, client=None
     ):
-        params = params or {}
         return self.api_request(
             endpoint=endpoint, fields=fields, params=params,
             headers=headers, client=client
@@ -84,7 +84,6 @@ class Api(object):
     def post(
         self, endpoint, fields='', params=None, headers=None, client=None
     ):
-        params = params or {}
         return self.api_request(
             endpoint=endpoint, method='POST', fields=fields,
             params=params, headers=headers, client=client
