@@ -8,9 +8,12 @@ from linkedin_api_error import LinkedinAPIError
 
 class api(object):
 
-    def __init__(self, consumer):
+    def __init__(self, api_key, api_secret):
+        self.api_key = api_key
+        self.api_secret = api_secret
+
         self.base_url = 'https://api.linkedin.com'
-        self.consumer = consumer
+        self.consumer = oauth.Consumer(api_key, api_secret)
         self.client = oauth.Client(self.consumer)
 
         self.headers = {'User-agent': 'pylinkedin'}

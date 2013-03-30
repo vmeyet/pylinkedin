@@ -2,6 +2,7 @@ import urllib
 import oauth2 as oauth
 
 from api import Api
+from user_api import UserApi
 
 
 class AuthApi(Api):
@@ -11,9 +12,7 @@ class AuthApi(Api):
         self.access_token_endpoint = '/uas/oauth/accessToken'
         # self.authorize_endpoint = '/uas/oauth/authorize'
 
-        consumer = oauth.Consumer(api_key, api_secret)
-
-        Api.__init__(self, consumer)
+        Api.__init__(self, api_key, api_secret)
 
     def get_access_token(self, request_token, verifier):
         '''Get a permanent token using the oauth verifier and request token
@@ -52,6 +51,9 @@ class AuthApi(Api):
         )
 
         return request_token, auth_url
+
+    def get_user_api_from(self, access_token):
+        return UserApi(self.api_key, self.api_secret, access_token)
 
     def _create_auth_url_from_request_token(self, request_token):
         url = request_token['xoauth_request_auth_url'] + '?' + urllib.urlencode({

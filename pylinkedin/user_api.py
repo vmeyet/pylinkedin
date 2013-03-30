@@ -25,8 +25,8 @@ class UserApi(Api):
     CONNECTIONS_UPDATED = 'updated'
     CONNECTIONS_NEW = 'new'
 
-    def __init__(self, consumer, access_token):
-        Api.__init__(self, consumer)
+    def __init__(self, api_key, api_secret, access_token):
+        Api.__init__(self, api_key, api_secret)
 
         self.oauth_token = oauth.Token(
             access_token['oauth_token'], access_token['oauth_token_secret']
