@@ -25,18 +25,13 @@ class Api(object):
             'urlencoded': urllib.urlencode
         }
 
-    def api_request(
-        self, endpoint, method='GET', fields='',
-        params=None, headers=None, client=None
-    ):
+    def api_request(self, endpoint, method='GET', params=None, headers=None, client=None):
         url = self.base_url + endpoint
         client = client if client else self.client
         params = params if params else {}
 
         if headers:
             self.headers.update(headers)
-        if fields:
-            url = '%s:(%s)' % (url, fields)
 
         if method == 'POST':
             resp, content = client.request(
@@ -74,19 +69,17 @@ class Api(object):
         return content if content else True
 
     def get(
-        self, endpoint, fields='', params=None, headers=None, client=None
+        self, endpoint, params=None, headers=None, client=None
     ):
         return self.api_request(
-            endpoint=endpoint, fields=fields, params=params,
-            headers=headers, client=client
+            endpoint=endpoint, params=params, headers=headers, client=client
         )
 
     def post(
-        self, endpoint, fields='', params=None, headers=None, client=None
+        self, endpoint, params=None, headers=None, client=None
     ):
         return self.api_request(
-            endpoint=endpoint, method='POST', fields=fields,
-            params=params, headers=headers, client=client
+            endpoint=endpoint, method='POST', params=params, headers=headers, client=client
         )
 
     def use_json(self):

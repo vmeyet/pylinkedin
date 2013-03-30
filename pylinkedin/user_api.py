@@ -50,7 +50,7 @@ class UserApi(Api):
             kwargs['profile_id'] = profile_id
 
         if kwargs.get('selectors'):
-            kwargs['selectors'] = ','.join(kwargs['selectors'])
+            kwargs['selectors'] = self._selectors_to_string(kwargs['selectors'])
 
         headers = kwargs.get('headers', {})
         if kwargs.get('language'):
@@ -69,14 +69,14 @@ class UserApi(Api):
                                         to append to the url
                           'id' (int/str) -- profile id to fetch
                           'ids' (list/tuple) -- list of profile to fetch
-                          'language' (str/tuple/list) -- preferred language/list of language
+                          'language' (str/tuple/list) -- preferred language/list of languages
                                         ex: ('es-ES', 'en-US', 'it-IT')
                                         or: 'en-US, it-IT'
                           'profile_ids' (list/tuple) -- list of profile to fetch
                                         with the type of the profile id
                                         ex: ('~', 'id=1234', 'url=urlencoded-url-here')
                           'profile_url' (str) -- url of the profile to fetch
-                          selectors (list/tuple) -- list of LinkedIn compatible
+                          'selectors' (list/tuple) -- list of LinkedIn compatible
                                         field selectors
             Return:
                 dict: response -- dictionary of the requested fields
@@ -86,13 +86,21 @@ class UserApi(Api):
         profile_id = kwargs.get('profile_id', '/~')
 
         content = self.get(
-            endpoint=api_endpoint.format(profile_id=profile_id),
-            fields=kwargs.get('selectors'),
+            endpoint=api_endpoint.format(profile_id=profile_id) + kwargs.get('selectors'),
             params=kwargs.get('get_parameters'),
             headers=kwargs.get('headers')
         )
 
         return content
+
+    @classmethod
+    def _selectors_to_string(cls, list_of_selector):
+        selectors = [
+            str(x) if not isinstance(x, dict)
+            else ','.join(str(y) + cls._selectors_to_string(x[y]) for y in x)
+            for x in list_of_selector
+        ]
+        return ':(' + ','.join(selectors) + ')'
 
     # PROFILE API
 
