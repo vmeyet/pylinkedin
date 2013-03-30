@@ -6,7 +6,7 @@ import oauth2 as oauth
 from linkedin_api_error import LinkedinAPIError
 
 
-class LinkedinAPI(object):
+class api(object):
 
     def __init__(self, consumer):
         self.base_url = 'https://api.linkedin.com'
@@ -95,6 +95,6 @@ class LinkedinAPI(object):
         self._format = 'json'
 
     def use_urlencoded(self):
-        self.headers.pop('x-li-format', None):
+        self.headers.pop('x-li-format', None)
         self.headers['Content-Type'] = 'application/x-www-form-urlencoded'
         self._format = 'urlencoded'

@@ -4,10 +4,10 @@ import urllib
 # import time
 # import datetime
 
-from linkedin_api import LinkedinAPI
+from api import Api
 
 
-class LinkedinUserAPI(LinkedinAPI):
+class UserApi(Api):
     '''Api abstraction specific to a given user, using his tokens
     '''
 
@@ -26,7 +26,7 @@ class LinkedinUserAPI(LinkedinAPI):
     CONNECTIONS_NEW = 'new'
 
     def __init__(self, consumer, access_token):
-        LinkedinAPI.__init__(self, consumer)
+        Api.__init__(self, consumer)
 
         self.oauth_token = oauth.Token(
             access_token['oauth_token'], access_token['oauth_token_secret']

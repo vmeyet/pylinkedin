@@ -1,11 +1,10 @@
 import urllib
-import urlparse
 import oauth2 as oauth
 
-from linkedin_api import LinkedinAPI
+from api import Api
 
 
-class LinkedinAuthAPI(LinkedinAPI):
+class AuthApi(Api):
 
     def __init__(self, api_key, api_secret):
         self.request_token_endpoint = '/uas/oauth/requestToken'
@@ -14,7 +13,7 @@ class LinkedinAuthAPI(LinkedinAPI):
 
         consumer = oauth.Consumer(api_key, api_secret)
 
-        LinkedinAPI.__init__(self, consumer)
+        Api.__init__(self, consumer)
 
     def get_access_token(self, request_token, verifier):
         '''Get a permanent token using the oauth verifier and request token
