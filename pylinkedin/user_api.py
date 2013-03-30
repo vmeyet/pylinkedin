@@ -59,6 +59,7 @@ class UserApi(Api):
             else:
                 headers['Accept-Language'] = ', '.join(kwargs['languages'])
         kwargs['headers'] = headers
+        return kwargs
 
     def _api_call(self, api_endpoint, **kwargs):
         '''generic method to call the api.

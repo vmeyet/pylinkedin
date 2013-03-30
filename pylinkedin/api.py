@@ -3,10 +3,10 @@ import urllib
 import urlparse
 import oauth2 as oauth
 
-from linkedin_api_error import LinkedinAPIError
+from errors import LinkedinApiError
 
 
-class api(object):
+class Api(object):
 
     def __init__(self, api_key, api_secret):
         self.api_key = api_key
@@ -60,13 +60,13 @@ class api(object):
             try:
                 content = dict(urlparse.parse_qsl(content))
             except ValueError:
-                raise LinkedinAPIError(
+                raise LinkedinApiError(
                     'Unable to decode li api response.\ncontent: %s' % content
                 )
 
         status = int(resp.get('status', 0))
         if status < 200 or status >= 300:
-            raise LinkedinAPIError(
+            raise LinkedinApiError(
                 'Error Code: %d, Response content: %s' % (status, content)
             )
 
