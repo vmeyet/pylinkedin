@@ -53,17 +53,18 @@ class UserApi(Api):
             kwargs['selectors'] = ','.join(kwargs['selectors'])
 
         headers = kwargs.get('headers', {})
-        if kwargs.get('languages'):
-            if isinstance(kwargs['languages'], str):
-                headers['Accept-Language'] = kwargs['languages']
+        if kwargs.get('language'):
+            if isinstance(kwargs['language'], str):
+                headers['Accept-Language'] = kwargs['language']
             else:
-                headers['Accept-Language'] = ', '.join(kwargs['languages'])
+                headers['Accept-Language'] = ', '.join(kwargs['language'])
         kwargs['headers'] = headers
         return kwargs
 
     def _api_call(self, api_endpoint, **kwargs):
         '''generic method to call the api.
             Param:
+                api_endpoint -- url endpoint of the LI api to call
                 kwargs -- 'get_parameters' (dict) -- dictionary of parameters
                                         to append to the url
                           'id' (int/str) -- profile id to fetch
