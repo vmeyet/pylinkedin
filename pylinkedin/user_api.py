@@ -133,5 +133,30 @@ class UserApi(Api):
 
     # PEOPLE SEARCH API
 
-    def search_people(self):
-        pass
+    def search_people(self, limit=None, skip=None, sort_by=None, **kwargs):
+
+        get_parameters = kwargs.get('get_parameters', {})
+
+        accepted_keyword = (
+            'keywords', 'first-name', 'last-name', 'company-name', 'current-company',
+            'title', 'current-title', 'school-name', 'current-school', 'postal-code',
+            'distance', 'facet', 'facets'
+        )
+
+        get_parameters = {
+            k: urllib.urlencode(v) for k, v in kwargs.iteritems() if k in accepted_keyword
+        }
+
+        if limit:
+            get_parameters['count'] = limit
+        if skip:
+            get_parameters['start'] = skip
+        if sort_by:
+            get_parameters['sort'] = sort_by
+
+        kwargs['get_parameters'] = get_parameters
+
+        return self._api_call(
+            api_endpoint=self.URL_ENDPOINT['people_search'],
+            **kwargs
+        )
