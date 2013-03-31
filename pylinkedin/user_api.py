@@ -121,10 +121,9 @@ class UserApi(Api):
 
     # PROFILE API
 
-    def get_profile(self, selectors=None, **kwargs):
+    def get_profile(self, **kwargs):
         return self._api_call(
             api_endpoint=self.URL_ENDPOINT['people'] + '{profile_id}',
-            selectors=selectors,
             **kwargs
         )
 
@@ -153,5 +152,13 @@ class UserApi(Api):
                 'title', 'current_title', 'school_name', 'current_school', 'postal_code',
                 'distance', 'facet', 'facets', 'sort'
             ),
+            **kwargs
+        )
+
+    def get_out_of_network_profile(self, p_id, value, **kwargs):
+        kwargs['headers'] = {'x-li-auth-token': value}
+        return self._api_call(
+            api_endpoint=self.URL_ENDPOINT['people'] + '/%s' % p_id,
+            headers=kwargs['headers'],
             **kwargs
         )

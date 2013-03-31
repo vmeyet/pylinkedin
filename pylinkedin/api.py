@@ -29,23 +29,21 @@ class Api(object):
         url = self.base_url + endpoint
         client = client if client else self.client
         params = params if params else {}
-
-        if headers:
-            self.headers.update(headers)
+        headers.update(self.headers)
 
         if method == 'POST':
             resp, content = client.request(
                 uri=url,
                 method='POST',
                 body=self._handler_POST_body[self._format](params),
-                headers=self.headers
+                headers=headers
             )
 
         else:
             resp, content = client.request(
                 uri='%s?%s' % (url, urllib.urlencode(params)),
                 method='GET',
-                headers=self.headers
+                headers=headers
             )
 
         # It's Better to Beg for Forgiveness than to Ask for Permission
