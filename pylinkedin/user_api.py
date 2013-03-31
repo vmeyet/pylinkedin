@@ -1,8 +1,8 @@
 import oauth2 as oauth
 import urllib
 
-# import time
-# import datetime
+import time
+from datetime import datetime
 
 from api import Api
 
@@ -21,9 +21,6 @@ class UserApi(Api):
         'jobs': '/v1/jobs',
         'job_search': '/v1/job-search',
     }
-
-    CONNECTIONS_UPDATED = 'updated'
-    CONNECTIONS_NEW = 'new'
 
     def __init__(self, api_key, api_secret, access_token):
         Api.__init__(self, api_key, api_secret)
@@ -93,6 +90,26 @@ class UserApi(Api):
 
         return content
 
+    def _api_call_with_get_parameter(self, api_endpoint, accepted_keywords, **kwargs):
+        get_parameters = kwargs.get('get_parameters', {})
+
+        get_parameters = {
+            k.replace('_', '-'): urllib.urlencode(v)
+            for k, v in kwargs.iteritems() if k in accepted_keywords
+        }
+
+        if limit:
+            get_parameters['count'] = limit
+        if skip:
+            get_parameters['start'] = skip
+
+        kwargs['get_parameters'] = get_parameters
+
+        return self._api_call(
+            api_endpoint=api_endpoint,
+            **kwargs
+        )
+
     @classmethod
     def _selectors_to_string(cls, list_of_selector):
         selectors = [
@@ -112,51 +129,29 @@ class UserApi(Api):
         )
 
     def get_connection(
-        self, limit=None, skip=None, modified=None, modified_since=None, **kwargs
+        self, modified=None, modified_since=None, **kwargs
     ):
-        get_parameters = kwargs.get('get_parameters', {})
+        if modified and modified not in ('new', 'updated'):
+            get_parameters.pop('modified', None)
 
-        # limit and skip have more semantic
-        if limit:
-            get_parameters['count'] = limit
-        if skip:
-            get_parameters['start'] = skip
-        if modified and modified in (self.CONNECTIONS_NEW, self.CONNECTIONS_UPDATED):
-            get_parameters['modified'] = modified
+        if modified_since and isinstance(modified_since, datetime):
+            get_parameters['modified_since'] = time.mktime(modified_since.timetuple())
 
-        kwargs['get_parameters'] = get_parameters
-
-        return self._api_call(
+        return _api_call_with_get_parameter(
             api_endpoint=self.URL_ENDPOINT['people'] + '{profile_id}/connections',
+            accepted_keywords=('modified', 'modified_since'),
             **kwargs
         )
 
     # PEOPLE SEARCH API
 
-    def search_people(self, limit=None, skip=None, sort_by=None, **kwargs):
-
-        get_parameters = kwargs.get('get_parameters', {})
-
-        accepted_keyword = (
-            'keywords', 'first-name', 'last-name', 'company-name', 'current-company',
-            'title', 'current-title', 'school-name', 'current-school', 'postal-code',
-            'distance', 'facet', 'facets'
-        )
-
-        get_parameters = {
-            k: urllib.urlencode(v) for k, v in kwargs.iteritems() if k in accepted_keyword
-        }
-
-        if limit:
-            get_parameters['count'] = limit
-        if skip:
-            get_parameters['start'] = skip
-        if sort_by:
-            get_parameters['sort'] = sort_by
-
-        kwargs['get_parameters'] = get_parameters
-
-        return self._api_call(
+    def search_people(self, **kwargs):
+        return self._api_call_with_get_parameter(
             api_endpoint=self.URL_ENDPOINT['people_search'],
+            accepted_keyword=(
+                'keywords', 'first_name', 'last_name', 'company_name', 'current_company',
+                'title', 'current_title', 'school_name', 'current_school', 'postal_code',
+                'distance', 'facet', 'facets', 'sort'
+            ),
             **kwargs
         )
