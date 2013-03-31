@@ -94,7 +94,7 @@ class UserApi(Api):
         get_parameters = kwargs.get('get_parameters', {})
 
         get_parameters = {
-            k.replace('_', '-'): urllib.urlencode(v)
+            k.replace('_', '-'): v
             for k, v in kwargs.iteritems() if k in accepted_keywords
         }
 
@@ -131,11 +131,11 @@ class UserApi(Api):
     def get_connection(
         self, modified=None, modified_since=None, **kwargs
     ):
-        if modified and modified not in ('new', 'updated'):
-            get_parameters.pop('modified', None)
+        if modified and modified in ('new', 'updated'):
+            kwargs['modified'] = modified
 
         if modified_since and isinstance(modified_since, datetime):
-            get_parameters['modified_since'] = time.mktime(modified_since.timetuple())
+            kwargs['modified_since'] = time.mktime(modified_since.timetuple())
 
         return _api_call_with_get_parameter(
             api_endpoint=self.URL_ENDPOINT['people'] + '{profile_id}/connections',
