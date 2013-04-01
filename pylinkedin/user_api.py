@@ -90,7 +90,7 @@ class UserApi(Api):
 
         return content
 
-    def _api_call_with_get_parameter(self, api_endpoint, accepted_keywords, **kwargs):
+    def _api_call_with_get_parameter(self, api_endpoint, accepted_keywords, limit, skip, **kwargs):
         get_parameters = kwargs.get('get_parameters', {})
 
         get_parameters = {
@@ -162,3 +162,8 @@ class UserApi(Api):
             headers=kwargs['headers'],
             **kwargs
         )
+
+    # GROUP API
+
+    def get_group(self):
+        pass
