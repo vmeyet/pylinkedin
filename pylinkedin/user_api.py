@@ -5,6 +5,7 @@ import time
 from datetime import datetime
 
 from api import Api
+from errors import LinkedinUserApiError
 
 
 class UserApi(Api):
@@ -30,38 +31,63 @@ class UserApi(Api):
         )
         self.client = oauth.Client(self.consumer, self.oauth_token)
 
-    def _handle_kwargs(self, kwargs):
-        if not kwargs:
-            return
+    # {{{ PROFILE API
 
-        profile_id = None
-        if kwargs.get('id'):
-            profile_id = '/id=%s' % kwargs['id']
-        elif kwargs.get('ids'):
-            profile_id = '::(id=%s)' % ',id='.join(map(str, kwargs['ids']))
-        elif kwargs.get('profile_ids'):
-            profile_id = '::(%s)' % ','.join(kwargs['profile_ids'])
-        elif kwargs.get('profile_url'):
-            profile_id = '/url=%s' % urllib.urlencode(kwargs['profile_url'])
-        if profile_id:
-            kwargs['profile_id'] = profile_id
+    def get_profile(self, **kwargs):
+        return UserApiQueryset(
+            api=self,
+            api_endpoint=self.URL_ENDPOINT['people'] + '{profile_id}',
+            **kwargs
+        ).get()
 
-        if kwargs.get('selectors'):
-            kwargs['selectors'] = self._selectors_to_string(kwargs['selectors'])
+    def get_connection(self, **kwargs):
+        return UserApiQueryset(
+            api=self,
+            api_endpoint=self.URL_ENDPOINT['people'] + '{profile_id}/connections',
+            accepted_keywords=('modified', 'modified_since', 'start', 'count'),
+            **kwargs
+        ).get()
 
-        headers = kwargs.get('headers', {})
-        if kwargs.get('language'):
-            if isinstance(kwargs['language'], str):
-                headers['Accept-Language'] = kwargs['language']
-            else:
-                headers['Accept-Language'] = ', '.join(kwargs['language'])
-        kwargs['headers'] = headers
-        return kwargs
+    # }}}
 
-    def _api_call(self, api_endpoint, **kwargs):
-        '''generic method to call the api.
+    # {{{ PEOPLE SEARCH API
+
+    def search_people(self, **kwargs):
+        return UserApiQueryset(
+            api=self,
+            api_endpoint=self.URL_ENDPOINT['people_search'],
+            accepted_keyword=(
+                'keywords', 'first_name', 'last_name', 'company_name', 'current_company',
+                'title', 'current_title', 'school_name', 'current_school', 'postal_code',
+                'distance', 'facet', 'facets', 'sort', 'start', 'count'
+            ),
+            **kwargs
+        ).get()
+
+    def get_out_of_network_profile(self, p_id, value, **kwargs):
+        kwargs['headers'] = {'x-li-auth-token': value}
+        return UserApiQueryset(
+            api=self,
+            api_endpoint=self.URL_ENDPOINT['people'] + '/%s' % p_id,
+            headers=kwargs['headers'],
+            **kwargs
+        ).get()
+
+    # }}}
+
+    # {{{ GROUP API
+
+    def get_group(self):
+        pass
+
+    # }}}
+
+
+class UserApiQueryset(object):
+
+    def __init__(self, api, api_endpoint, accepted_keywords=None, **kwargs):
+        ''' intialization method
             Param:
-                api_endpoint -- url endpoint of the LI api to call
                 kwargs -- 'get_parameters' (dict) -- dictionary of parameters
                                         to append to the url
                           'id' (int/str) -- profile id to fetch
@@ -78,37 +104,41 @@ class UserApi(Api):
             Return:
                 dict: response -- dictionary of the requested fields
         '''
-        kwargs = self._handle_kwargs(kwargs)
+        self.api = api
+        self._fetched_result = None
+        self.api_endpoint = api_endpoint
+        self.accepted_keywords = accepted_keywords
+        self.kwargs = kwargs
+        self.filter_params = {}
 
-        profile_id = kwargs.get('profile_id', '/~')
+    @classmethod
+    def _handle_kwargs(cls, kwargs):
+        if not kwargs:
+            return {}
 
-        content = self.get(
-            endpoint=api_endpoint.format(profile_id=profile_id) + kwargs.get('selectors'),
-            params=kwargs.get('get_parameters'),
-            headers=kwargs.get('headers')
-        )
+        profile_id = None
+        if kwargs.get('id'):
+            profile_id = '/id=%s' % kwargs['id']
+        elif kwargs.get('ids'):
+            profile_id = '::(id=%s)' % ',id='.join(map(str, kwargs['ids']))
+        elif kwargs.get('profile_ids'):
+            profile_id = '::(%s)' % ','.join(kwargs['profile_ids'])
+        elif kwargs.get('profile_url'):
+            profile_id = '/url=%s' % urllib.urlencode(kwargs['profile_url'])
+        if profile_id:
+            kwargs['profile_id'] = profile_id
 
-        return content
+        if kwargs.get('selectors'):
+            kwargs['selectors'] = cls._selectors_to_string(kwargs['selectors'])
 
-    def _api_call_with_get_parameter(self, api_endpoint, accepted_keywords, limit, skip, **kwargs):
-        get_parameters = kwargs.get('get_parameters', {})
-
-        get_parameters = {
-            k.replace('_', '-'): v
-            for k, v in kwargs.iteritems() if k in accepted_keywords
-        }
-
-        if limit:
-            get_parameters['count'] = limit
-        if skip:
-            get_parameters['start'] = skip
-
-        kwargs['get_parameters'] = get_parameters
-
-        return self._api_call(
-            api_endpoint=api_endpoint,
-            **kwargs
-        )
+        headers = kwargs.get('headers', {})
+        if kwargs.get('language'):
+            if isinstance(kwargs['language'], str):
+                headers['Accept-Language'] = kwargs['language']
+            else:
+                headers['Accept-Language'] = ', '.join(kwargs['language'])
+        kwargs['headers'] = headers
+        return kwargs
 
     @classmethod
     def _selectors_to_string(cls, list_of_selector):
@@ -119,51 +149,59 @@ class UserApi(Api):
         ]
         return ':(' + ','.join(selectors) + ')'
 
-    # PROFILE API
+    @classmethod
+    def _handle_filtering_values(cls, value):
+        # linekdin api use timestamp since Epoch, this api can use date/datetime objects
+        if isinstance(modified_since, date):
+            return time.mktime(modified_since.timetuple())
+        return value
 
-    def get_profile(self, **kwargs):
-        return self._api_call(
-            api_endpoint=self.URL_ENDPOINT['people'] + '{profile_id}',
-            **kwargs
+    def __call__(self):
+
+        kwargs = self._handle_kwargs(self.kwargs)
+
+        profile_id = kwargs.get('profile_id', '/~')
+
+        content = self.api.get(
+            endpoint=self.api_endpoint.format(profile_id=profile_id) + kwargs.get('selectors', ''),
+            params=self.filter_params,
+            headers=kwargs.get('headers')
         )
 
-    def get_connection(
-        self, modified=None, modified_since=None, **kwargs
-    ):
-        if modified and modified in ('new', 'updated'):
-            kwargs['modified'] = modified
+        return content
 
-        if modified_since and isinstance(modified_since, datetime):
-            kwargs['modified_since'] = time.mktime(modified_since.timetuple())
+    def get(self):
+        if not self._fetched_result:
+            self._fetched_result = self.__call__()
+        return self._fetched_result
 
-        return _api_call_with_get_parameter(
-            api_endpoint=self.URL_ENDPOINT['people'] + '{profile_id}/connections',
-            accepted_keywords=('modified', 'modified_since'),
-            **kwargs
-        )
+    def filter(self, **kwargs):
+        self._fetched_result = None
 
-    # PEOPLE SEARCH API
+        self.filter_params = self.filter_params.update({
+            k.replace('_', '-'): self._handle_filtering_values(v)
+            for k, v in kwargs.iteritems() if k in self.accepted_keywords
+        })
 
-    def search_people(self, **kwargs):
-        return self._api_call_with_get_parameter(
-            api_endpoint=self.URL_ENDPOINT['people_search'],
-            accepted_keyword=(
-                'keywords', 'first_name', 'last_name', 'company_name', 'current_company',
-                'title', 'current_title', 'school_name', 'current_school', 'postal_code',
-                'distance', 'facet', 'facets', 'sort'
-            ),
-            **kwargs
-        )
+        return self
 
-    def get_out_of_network_profile(self, p_id, value, **kwargs):
-        kwargs['headers'] = {'x-li-auth-token': value}
-        return self._api_call(
-            api_endpoint=self.URL_ENDPOINT['people'] + '/%s' % p_id,
-            headers=kwargs['headers'],
-            **kwargs
-        )
+    def limit(self, limit):
+        if not 'count' in self.accepted_keywords:
+            raise LinkedinUserApiError(
+                'Cannot use method "limit" on the endpoint %s' % self.endpoint
+            )
+        return self.filter(count=limit)
 
-    # GROUP API
+    def skip(self, skip):
+        if not 'start' in self.accepted_keywords:
+            raise LinkedinUserApiError(
+                'Cannot use method "count" on the endpoint %s' % self.endpoint
+            )
+        return self.filter(start=skip)
 
-    def get_group(self):
-        pass
+    def sort(self, keyword):
+        if not 'sort' in self.accepted_keywords:
+            raise LinkedinUserApiError(
+                'Cannot use method "sort" on the endpoint %s' % self.endpoint
+            )
+        return self.filter(sort=keyword)
