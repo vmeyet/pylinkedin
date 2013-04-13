@@ -4,3 +4,7 @@ class LinkedinApiError(Exception):
 
 class LinkedinAuthenticationError(LinkedinApiError):
     pass
+
+
+class LinkedinUserApiError(LinkedinApiError):
+    pass

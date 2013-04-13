@@ -29,6 +29,8 @@ class Api(object):
         url = self.base_url + endpoint
         client = client if client else self.client
         params = params if params else {}
+        headers = headers if headers else {}
+
         headers.update(self.headers)
 
         if method == 'POST':
