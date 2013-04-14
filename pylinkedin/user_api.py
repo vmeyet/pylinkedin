@@ -40,13 +40,13 @@ class UserApi(Api):
             **kwargs
         ).get()
 
-    def get_connection(self, **kwargs):
+    def get_connections(self, **kwargs):
         return UserApiQueryset(
             api=self,
             api_endpoint=self.URL_ENDPOINT['people'] + '{profile_id}/connections',
             accepted_keywords=('modified', 'modified_since', 'start', 'count'),
             **kwargs
-        ).get()
+        )
 
     # }}}
 
@@ -62,14 +62,15 @@ class UserApi(Api):
                 'distance', 'facet', 'facets', 'sort', 'start', 'count'
             ),
             **kwargs
-        ).get()
+        )
 
     def get_out_of_network_profile(self, p_id, value, **kwargs):
-        kwargs['headers'] = {'x-li-auth-token': value}
+        kwargs['headers'] = kwargs.get('headers', {})
+        kwargs['headers'].update({'x-li-auth-token': value})
         return UserApiQueryset(
             api=self,
             api_endpoint=self.URL_ENDPOINT['people'] + '/%s' % p_id,
-            headers=kwargs['headers'],
+            headers=kwargs.pop('headers'),
             **kwargs
         ).get()
 
@@ -152,8 +153,8 @@ class UserApiQueryset(object):
     @classmethod
     def _handle_filtering_values(cls, value):
         # linekdin api use timestamp since Epoch, this api can use date/datetime objects
-        if isinstance(modified_since, date):
-            return time.mktime(modified_since.timetuple())
+        if isinstance(value, date):
+            return time.mktime(value.timetuple())
         return value
 
     def __call__(self):
@@ -174,6 +175,18 @@ class UserApiQueryset(object):
         if not self._fetched_result:
             self._fetched_result = self.__call__()
         return self._fetched_result
+
+    def __len__(self):
+        result = self.get()
+        return result.get('_total', len(result))
+
+    def __iter__(self):
+        result = self.get()
+        return result.get('values', []).__iter__()
+
+    def __getitem__(self, key):
+        result = self.get()
+        return result.get('values', []).__getitem__(key)
 
     def filter(self, **kwargs):
         self._fetched_result = None
@@ -205,3 +218,8 @@ class UserApiQueryset(object):
                 'Cannot use method "sort" on the endpoint %s' % self.endpoint
             )
         return self.filter(sort=keyword)
+
+    def select(self, *selectors):
+        self._fetched_result = None
+        self.kwargs.update({'selectors': selectors})
+        return self
