@@ -89,6 +89,10 @@ class UserApiQueryset(object):
     def __init__(self, api, api_endpoint, accepted_keywords=None, **kwargs):
         ''' intialization method
             Param:
+                api (UserApi) -- the user api element referring to (needed for the api call)
+                api_endpoint (path) -- endpoint of the api to call
+                accepted_keywords -- keywords that can be used to filter result
+                           (correspond to get_parameters)
                 kwargs -- 'get_parameters' (dict) -- dictionary of parameters
                                         to append to the url
                           'id' (int/str) -- profile id to fetch
@@ -111,6 +115,8 @@ class UserApiQueryset(object):
         self.accepted_keywords = accepted_keywords
         self.kwargs = kwargs
         self.filter_params = {}
+
+    # {{{ Private class methods
 
     @classmethod
     def _handle_kwargs(cls, kwargs):
@@ -156,6 +162,8 @@ class UserApiQueryset(object):
         if isinstance(value, date):
             return time.mktime(value.timetuple())
         return value
+
+    # }}}
 
     def __call__(self):
 
