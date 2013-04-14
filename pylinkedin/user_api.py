@@ -5,7 +5,7 @@ import time
 from datetime import datetime
 
 from api import Api
-from errors import LinkedinUserApiError
+from errors import UnavailableMethodForEndpointError
 
 
 class UserApi(Api):
@@ -87,7 +87,7 @@ class UserApi(Api):
 class UserApiQueryset(object):
 
     def __init__(self, api, api_endpoint, accepted_keywords=None, **kwargs):
-        ''' intialization method
+        '''Intialization method
             Param:
                 api (UserApi) -- the user api element referring to (needed for the api call)
                 api_endpoint (path) -- endpoint of the api to call
@@ -148,11 +148,26 @@ class UserApiQueryset(object):
         return kwargs
 
     @classmethod
-    def _selectors_to_string(cls, list_of_selector):
+    def _selectors_to_string(cls, list_of_selectors):
+        '''Transform the selectors' tuple into a string to append to the enpoint path
+            Param:
+                list_of_selectors (tuple/list) -- selectors to transform, they can be nested
+            Return:
+                (str) -- stringified version of those selectors
+                         ex:
+
+                        _selectors_to_string(
+                            ('id', 'first-name', 'last-name', {'positions': ('title',)})
+                        )
+
+                        would return
+
+                        :(id,first-name,last-name,positions:(title))
+        '''
         selectors = [
             str(x) if not isinstance(x, dict)
             else ','.join(str(y) + cls._selectors_to_string(x[y]) for y in x)
-            for x in list_of_selector
+            for x in list_of_selectors
         ]
         return ':(' + ','.join(selectors) + ')'
 
@@ -166,7 +181,8 @@ class UserApiQueryset(object):
     # }}}
 
     def __call__(self):
-
+        '''Call the api endpoint using the UserApi passed during the initialization
+        '''
         kwargs = self._handle_kwargs(self.kwargs)
 
         profile_id = kwargs.get('profile_id', '/~')
@@ -180,6 +196,8 @@ class UserApiQueryset(object):
         return content
 
     def get(self):
+        '''Same as call, but cache the result
+        '''
         if not self._fetched_result:
             self._fetched_result = self.__call__()
         return self._fetched_result
@@ -196,7 +214,13 @@ class UserApiQueryset(object):
         result = self.get()
         return result.get('values', []).__getitem__(key)
 
+    # {{{ Filtering methods and aliases
+
     def filter(self, **kwargs):
+        '''Allows filtering over the api result. this correspond to the GET parameters
+        that can be pass to the api. Any previous cached result is erased and another
+        call to the api is made
+        '''
         self._fetched_result = None
 
         self.filter_params = self.filter_params.update({
@@ -207,27 +231,31 @@ class UserApiQueryset(object):
         return self
 
     def limit(self, limit):
+        '''Alias for filtering using the 'count' GET parameter
+        '''
         if not 'count' in self.accepted_keywords:
-            raise LinkedinUserApiError(
-                'Cannot use method "limit" on the endpoint %s' % self.endpoint
-            )
+            raise UnavailableMethodForEndpointError('limit', self.endpoint)
         return self.filter(count=limit)
 
     def skip(self, skip):
+        '''Alias for filtering using the 'skip' GET parameter
+        '''
         if not 'start' in self.accepted_keywords:
-            raise LinkedinUserApiError(
-                'Cannot use method "count" on the endpoint %s' % self.endpoint
-            )
+            raise UnavailableMethodForEndpointError('count', self.endpoint)
         return self.filter(start=skip)
 
     def sort(self, keyword):
+        '''Alias for filtering using the 'sort' GET parameter
+        '''
         if not 'sort' in self.accepted_keywords:
-            raise LinkedinUserApiError(
-                'Cannot use method "sort" on the endpoint %s' % self.endpoint
-            )
+            raise UnavailableMethodForEndpointError('sort', self.endpoint)
         return self.filter(sort=keyword)
 
+    # }}}
+
     def select(self, *selectors):
+        '''Set the linekdin selectors to use during the api call
+        '''
         self._fetched_result = None
         self.kwargs.update({'selectors': selectors})
         return self
