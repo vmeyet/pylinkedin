@@ -7,6 +7,17 @@ from user_api import UserApi
 
 class AuthApi(Api):
 
+    PERMISSIONS = {
+        'profile': 'r_basicprofile',
+        'full_profile': 'r_fullprofile',
+        'email': 'r_emailaddress',
+        'connection': 'r_network',
+        'contact': 'r_contactinfo',
+        'network_update': 'rw_nus',
+        'group': 'rw_groups',
+        'message': 'w_messages',
+    }
+
     def __init__(self, api_key, api_secret):
         self.request_token_endpoint = '/uas/oauth/requestToken'
         self.access_token_endpoint = '/uas/oauth/accessToken'
