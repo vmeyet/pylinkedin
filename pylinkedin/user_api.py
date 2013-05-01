@@ -116,7 +116,7 @@ class UserApiQueryset(object):
         self.accepted_keywords = accepted_keywords
         self.kwargs = kwargs
         self.filters = {}
-        self.selectors = []
+        self.selectors = kwargs.get('selectors', [])
 
     # {{{ Private decorator
 
@@ -164,7 +164,10 @@ class UserApiQueryset(object):
                 headers['Accept-Language'] = kwargs['language']
             else:
                 headers['Accept-Language'] = ', '.join(kwargs['language'])
-        kwargs['headers'] = headers
+
+        if headers:
+            kwargs['headers'] = headers
+
         return kwargs
 
     @classmethod
@@ -203,6 +206,8 @@ class UserApiQueryset(object):
     def __call__(self):
         '''Call the api endpoint using the UserApi passed during the initialization
         '''
+
+        self.kwargs['selectors'] = self.selectors
         kwargs = self._handle_kwargs(self.kwargs)
 
         profile_id = kwargs.get('profile_id', '/~')
@@ -232,11 +237,19 @@ class UserApiQueryset(object):
         return result.get('_total', len(result))
 
     def __iter__(self):
-        result = self.get()
         return result.get('values', []).__iter__()
 
     def __getitem__(self, key):
         result = self.get()
+        skip = result.get('_start')
+        limit = result.get('_count')
+        if skip is not None and limit is not None:
+            # this mean linkedin have been paginating the result
+            new_skip = 0
+            if key < skip or key >= skip + limit:
+                new_skip = int(key / limit) * limit
+                key -= new_skip
+            result = self.skip(new_skip).limit(limit).get()
         return result.get('values', []).__getitem__(key)
 
     # {{{ Filtering methods and aliases
@@ -286,5 +299,4 @@ class UserApiQueryset(object):
         '''Set the linekdin selectors to use during the api call
         '''
         self.selectors = selectors
-        self.kwargs.update({'selectors': self.selectors})
         return self
