@@ -34,11 +34,11 @@ class AuthApi(Api):
         )
         token.set_verifier(verifier)
 
-        self.use_urlencoded()
-        return self.post(
-            endpoint=self.access_token_endpoint,
-            client=oauth.Client(self.consumer, token)
-        )
+        with self.use_urlencoded():
+            return self.post(
+                endpoint=self.access_token_endpoint,
+                client=oauth.Client(self.consumer, token)
+            )
 
     def get_request_token_and_auth_url(self, redirect_url=None, permissions=None):
         '''Get a request token from linkedin api, based on the consumer
@@ -51,17 +51,17 @@ class AuthApi(Api):
                                        linkedin api
                 auth_url (url) -- the authentication url to give to the user.
         '''
-        self.use_urlencoded()
-        request_token = self.post(
-            endpoint=self.request_token_endpoint,
-            params=self._get_additional_parameters(redirect_url, permissions)
+        with self.use_urlencoded():
+            request_token = self.post(
+                endpoint=self.request_token_endpoint,
+                params=self._get_additional_parameters(redirect_url, permissions)
 
-        )
-        auth_url = self._create_auth_url_from_request_token(
-            request_token=request_token
-        )
+            )
+            auth_url = self._create_auth_url_from_request_token(
+                request_token=request_token
+            )
 
-        return request_token, auth_url
+            return request_token, auth_url
 
     def get_user_api_from(self, access_token):
         return UserApi(self.api_key, self.api_secret, access_token)

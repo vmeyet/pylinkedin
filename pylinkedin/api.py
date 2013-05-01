@@ -2,6 +2,7 @@ import json
 import urllib
 import urlparse
 import oauth2 as oauth
+from contextlib import contextmanager
 
 from errors import LinkedinApiError
 
@@ -18,7 +19,7 @@ class Api(object):
 
         self.headers = {'User-agent': 'pylinkedin'}
         self._format = None
-        self.use_json()
+        self._use_json()
 
         self._handler_POST_body = {
             'json': json.dumps,
@@ -82,14 +83,21 @@ class Api(object):
             endpoint=endpoint, method='POST', params=params, headers=headers, client=client
         )
 
-    def use_json(self):
+    def _use_json(self):
         self.headers.update({
             'x-li-format': 'json',
             'Content-Type': 'application/json'
         })
         self._format = 'json'
 
+    @contextmanager
     def use_urlencoded(self):
-        self.headers.pop('x-li-format', None)
-        self.headers['Content-Type'] = 'application/x-www-form-urlencoded'
-        self._format = 'urlencoded'
+        try:
+            self.headers.pop('x-li-format', None)
+            self.headers['Content-Type'] = 'application/x-www-form-urlencoded'
+            self._format = 'urlencoded'
+            yield
+        except:
+            pass
+        finally:
+            self._use_json()
