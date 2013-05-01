@@ -1,8 +1,9 @@
 import oauth2 as oauth
 import urllib
 
+import copy
 import time
-from datetime import datetime
+from datetime import datetime, date
 
 from api import Api
 from errors import UnavailableMethodForEndpointError
@@ -56,7 +57,7 @@ class UserApi(Api):
         return UserApiQueryset(
             api=self,
             api_endpoint=self.URL_ENDPOINT['people_search'],
-            accepted_keyword=(
+            accepted_keywords=(
                 'keywords', 'first_name', 'last_name', 'company_name', 'current_company',
                 'title', 'current_title', 'school_name', 'current_school', 'postal_code',
                 'distance', 'facet', 'facets', 'sort', 'start', 'count'
@@ -114,7 +115,26 @@ class UserApiQueryset(object):
         self.api_endpoint = api_endpoint
         self.accepted_keywords = accepted_keywords
         self.kwargs = kwargs
-        self.filter_params = {}
+        self.filters = {}
+        self.selectors = []
+
+    # {{{ Private decorator
+
+    def _watch(value):
+        def decorator(fn):
+            def wrapper(self, *args, **kwargs):
+                old_value = copy.copy(getattr(self, value))
+
+                ret_val = fn(self, *args, **kwargs)
+
+                if old_value != getattr(self, value):
+                    self._fetched_result = None
+
+                return ret_val
+            return wrapper
+        return decorator
+
+    # }}}
 
     # {{{ Private class methods
 
@@ -175,7 +195,7 @@ class UserApiQueryset(object):
     def _handle_filtering_values(cls, value):
         # linekdin api use timestamp since Epoch, this api can use date/datetime objects
         if isinstance(value, date):
-            return time.mktime(value.timetuple())
+            return int(time.mktime(value.timetuple()) * 1e3)
         return value
 
     # }}}
@@ -189,7 +209,7 @@ class UserApiQueryset(object):
 
         content = self.api.get(
             endpoint=self.api_endpoint.format(profile_id=profile_id) + kwargs.get('selectors', ''),
-            params=self.filter_params,
+            params=self.filters,
             headers=kwargs.get('headers')
         )
 
@@ -203,6 +223,8 @@ class UserApiQueryset(object):
         return self._fetched_result
 
     def __len__(self):
+        if self.filters.get('count', False):
+            return self.filters['count']
         result = self.get()
         return result.get('_total', len(result))
 
@@ -216,18 +238,16 @@ class UserApiQueryset(object):
 
     # {{{ Filtering methods and aliases
 
+    @_watch('filters')
     def filter(self, **kwargs):
         '''Allows filtering over the api result. this correspond to the GET parameters
-        that can be pass to the api. Any previous cached result is erased and another
-        call to the api is made
+        that can be pass to the api. If filters change, any previous cached result is
+        erased and another call to the api is made
         '''
-        self._fetched_result = None
-
-        self.filter_params = self.filter_params.update({
+        self.filters.update({
             k.replace('_', '-'): self._handle_filtering_values(v)
             for k, v in kwargs.iteritems() if k in self.accepted_keywords
         })
-
         return self
 
     def limit(self, limit):
@@ -253,9 +273,15 @@ class UserApiQueryset(object):
 
     # }}}
 
+    def count(self):
+        '''alias for __len__
+        '''
+        return self.__len__()
+
+    @_watch('selectors')
     def select(self, *selectors):
         '''Set the linekdin selectors to use during the api call
         '''
-        self._fetched_result = None
-        self.kwargs.update({'selectors': selectors})
+        self.selectors = selectors
+        self.kwargs.update({'selectors': self.selectors})
         return self
