@@ -118,6 +118,8 @@ class UserApiQueryset(object):
         self.filters = {}
         self.selectors = kwargs.get('selectors', [])
 
+        self._current = 0
+
     # {{{ Private decorator
 
     def _watch(value):
@@ -128,7 +130,7 @@ class UserApiQueryset(object):
                 ret_val = fn(self, *args, **kwargs)
 
                 if old_value != getattr(self, value):
-                    self._fetched_result = None
+                    self.reset()
 
                 return ret_val
             return wrapper
@@ -237,7 +239,14 @@ class UserApiQueryset(object):
         return result.get('_total', len(result))
 
     def __iter__(self):
-        return result.get('values', []).__iter__()
+        return self
+
+    def next(self):
+        # TODO: there is a nasty infinite loop here
+        if self._current > self.__len__():
+            raise StopIteration
+        self._current += 1
+        return self[self._current - 1]  # test with: self._current - 1
 
     def __getitem__(self, key):
         result = self.get()
@@ -252,10 +261,17 @@ class UserApiQueryset(object):
             result = self.skip(new_skip).limit(limit).get()
         return result.get('values', []).__getitem__(key)
 
+    def reset(self):
+        self._fetched_result = None
+        self._current = 0
+
     # {{{ Filtering methods and aliases
 
     @_watch('filters')
     def filter(self, **kwargs):
+        return self._filter(**kwargs)
+
+    def _filter(self, **kwargs):
         '''Allows filtering over the api result. this correspond to the GET parameters
         that can be pass to the api. If filters change, any previous cached result is
         erased and another call to the api is made
@@ -271,14 +287,14 @@ class UserApiQueryset(object):
         '''
         if not 'count' in self.accepted_keywords:
             raise UnavailableMethodForEndpointError('limit', self.endpoint)
-        return self.filter(count=limit)
+        return self._filter(count=limit)
 
     def skip(self, skip):
         '''Alias for filtering using the 'skip' GET parameter
         '''
         if not 'start' in self.accepted_keywords:
             raise UnavailableMethodForEndpointError('count', self.endpoint)
-        return self.filter(start=skip)
+        return self._filter(start=skip)
 
     def sort(self, keyword):
         '''Alias for filtering using the 'sort' GET parameter
