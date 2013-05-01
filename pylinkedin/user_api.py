@@ -213,6 +213,9 @@ class UserApiQueryset(object):
             headers=kwargs.get('headers')
         )
 
+        # li search api force us to do ugly stuff as the following
+        content = content.get('people', content)
+
         return content
 
     def get(self):
