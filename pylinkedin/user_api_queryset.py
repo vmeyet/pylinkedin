@@ -1,4 +1,5 @@
 import copy
+import functools
 import urllib
 import time
 from datetime import datetime, date
@@ -45,6 +46,7 @@ class UserApiQueryset(object):
 
     def _watch(value):
         def decorator(fn):
+            @functools.wraps(fn)
             def wrapper(self, *args, **kwargs):
                 old_value = copy.copy(getattr(self, value))
 
